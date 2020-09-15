@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="auto-sub-gen", # Replace with your own username
+    name="auto-sub-gen-ckirby19", # Replace with your own username
     version="1.0.0",
     author="Conor Kirby",
     author_email="conorkirby1@gmail.com",
