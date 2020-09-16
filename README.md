@@ -11,13 +11,13 @@ Please run pip install -r requirements.txt to get required modules
 ### How to run
 
 The following flags are required:
--f or --source [Path to video file] 
+* -f or --source [Path to video file] 
 
 The following flags are optional:
--t or --threshold [threshold (in decibels) below average loudness, below which it will be considered silence. default = 20]
--s or --silence [length of time (ms) that volume must be below threshold for it to be considered silent. default = 250]
--d or --delay [Number of seconds to delay the subtitles by. default = 0]
--n or --output [Name of folder created to store output files. default = "output"]
+* -t or --threshold [threshold (in decibels) below average loudness, below which it will be considered silence. default = 20]
+* -s or --silence [length of time (ms) that volume must be below threshold for it to be considered silent. default = 250]
+* -d or --delay [Number of seconds to delay the subtitles by. default = 0]
+* -n or --output [Name of folder created to store output files. default = "output"]
 
 In command line, run `python autosubgen -f /path/to/video` 
 Other flags can be used like this: `python autosubgen -f /path/to/video -t 30 -s 100 -d 1.5 -n out`
