@@ -1,3 +1,4 @@
+import generate
 import pyaudio
 import speech_recognition as sr
 import datetime
@@ -8,47 +9,43 @@ import math
 import ffmpeg
 import argparse
 
-ap = argparse.ArgumentParser()
-#must add short hand and long hand versions of flag 
-ap.add_argument("-f", "--filepath", type=str,required=True,
-	help="path to directory containing video") #then can then be accessed using args["filepath"]
-ap.add_argument("-t","--threshold",type=int,default=20,
-    help="threshold (in decibels) below average loudness, below which it will be considered silence")
-ap.add_argument("-s","--silence",type=int,default=250,
-    help="length of time(ms) that volume must be below threshold for it to be considered silent")
-ap.add_argument("-d","--delay",type=float,default=0,
-    help="Number of seconds to delay the subtitles by")
-ap.add_argument("-n","--filename",type=str,default="output",
-    help="Name of folder created to store output files")
-args = vars(ap.parse_args())
-
-def silence_based_split():
+def silence_based_split(source,silence,threshold,delay,output):
     """
-    
+    Input: 
+        source - path to video source file
+        silence - length of time(ms) that volume must be below threshold for it to be considered silent
+        threshold - threshold (in decibels) below average loudness, below which it will be considered silence
+        delay - Number of seconds to delay the subtitles by
+        output - Name of folder created to store output files
+    Output: 
+        A file called output with the mp4 audio from the file, the mp4 audio chunks used for speech recognition and the output srt file
 
+    This function works by finding the average loudness of the audio of the input video, and setting a threshold below this average from which the audio will be considered
+    silent for that portion. The audio is split at these silent points to make it easier to send the audio to the online speech recognition package. Generate is then called
+    on the speech recongition text for each audio chunk 
     """
-    os_name = args["filename"]
+    os_name = output
     try:
         os.mkdir(os_name)
     except(FileExistsError):
         pass
 
     output_name = os_name + "/FullAudio.mp3"
-    ffmpeg.input(args["filepath"]).output(output_name).run()
+    ffmpeg.input(source).output(output_name).run()
     audio = AudioSegment.from_file(output_name)
-    audio_rms_dBFS = audio.dBFS
-    print("Got Audio, Stats: %s rms" % audio_rms_dBFS)
+    audio_rms_dBFS = audio.dBFS #get average loudness of audio
+    print("Got Audio, Average Loudness: %s rms" % audio_rms_dBFS)
     
     chunks = []
 
-    chunks = split_on_silence(audio,min_silence_len=args["silence"],silence_thresh=audio_rms_dBFS-args["threshold"])
+    chunks = split_on_silence(audio,min_silence_len=silence,silence_thresh=audio_rms_dBFS-threshold)
     num_chunks = len(chunks)
     print("Number of chunks to process: ", num_chunks)
 
     os.chdir(os_name) 
 
     current_time = datetime.datetime(100,1,1,0,0,)
-    current_time += datetime.timedelta(seconds=args["delay"])
+    current_time += datetime.timedelta(seconds=delay)
     
     block_num = 1 #srt files start at 1 index
     character_limit = 70 #http://www.permondo.eu/volunteers/introduction-to-subtitling/
@@ -100,11 +97,11 @@ def silence_based_split():
                         j+=last_space+1
                     else:
                         break
-                    current_time = generate_srt(new_sentence,block_num,current_time)
+                    current_time = generate.generate_srt(new_sentence,block_num,current_time)
                     block_num+=1
                     
             else:
-                current_time = generate_srt(sentence,block_num,current_time)
+                current_time = generate.generate_srt(sentence,block_num,current_time)
                 block_num += 1
             
         # catch any errors. 
@@ -115,41 +112,3 @@ def silence_based_split():
             print("Could not request results. check your internet connection") 
 
     os.chdir('..') 
-
-def generate_srt(sentence_to_parse,block_num,current_time):
-
-    num_words = len(sentence_to_parse.split())
-    time_add = len(sentence_to_parse.split())*0.36 #0.36 found empirically as number of seconds per word on average for this audio
-    frac,whole = math.modf(time_add)
-    whole = int(whole)
-    frac = int(round(frac,2) * 1000000) 
-    end_time = current_time + datetime.timedelta(0,whole,frac)
-    
-    str_current_time = str(current_time.time())
-    str_end_time = str(end_time.time())
-
-    with open("Textblocks.srt","a") as fh:
-        fh.write(str(block_num))
-        fh.write("\n")
-        fh.write(str_current_time[:8])
-        fh.write(",")
-        if str_current_time[9:12] == "":
-            fh.write("000")
-        else:
-            fh.write(str_current_time[9:12])
-        fh.write(" --> ")
-        fh.write(str_end_time[:8])
-        fh.write(",")
-        if str_end_time[9:12] == "":
-            fh.write("000")
-        else:
-            fh.write(str_end_time[9:12])
-        fh.write("\n")
-        fh.write(sentence_to_parse)
-        fh.write("\n")
-        fh.write("\n")
-
-    return end_time
-
-if __name__ == '__main__': 
-    silence_based_split() 
